@@ -1,0 +1,7 @@
+{
+  "command": "node",
+  "args": [
+    "dist/index.js"
+  ],
+  "cwd": "PACKAGE_DIRECTORY"
+}

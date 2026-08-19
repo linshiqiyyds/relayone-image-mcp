@@ -1,0 +1,69 @@
+{
+  "providers": [
+    {
+      "id": "site",
+      "label": "RelayOne Image",
+      "baseUrlEnv": "",
+      "defaultBaseUrl": "https://aiapi.aiqji.cn/v1",
+      "apiKeyEnv": "SITE_IMAGE_API_KEY",
+      "proxyEnv": "SITE_IMAGE_PROXY_URL",
+      "modelsPath": "/models",
+      "imageGenerationsPath": "/images/generations",
+      "usagePath": "",
+      "defaultModel": "gpt-image-2",
+      "evidence": {
+        "verified": [
+          "RelayOne uses an OpenAI Images-compatible generations endpoint.",
+          "The default customer endpoint is https://aiapi.aiqji.cn/v1.",
+          "The default image model is gpt-image-2.",
+          "The MCP keeps both URL and b64_json fields in the saved response JSON."
+        ],
+        "notVerified": [
+          "Available models and per-account limits are checked by the live RelayOne account."
+        ]
+      },
+      "parameters": [
+        {
+          "name": "Model",
+          "requestKey": "model",
+          "type": "string",
+          "required": false,
+          "status": "verified-by-success",
+          "note": "Defaults to gpt-image-2; use a model returned by the account's /models endpoint."
+        },
+        {
+          "name": "Prompt",
+          "requestKey": "prompt",
+          "type": "string",
+          "required": true,
+          "status": "verified-by-success",
+          "note": "The image description."
+        },
+        {
+          "name": "Size",
+          "requestKey": "size",
+          "type": "string",
+          "required": false,
+          "status": "verified-by-success",
+          "note": "Use a supported widthxheight value such as 1024x1024."
+        },
+        {
+          "name": "Count",
+          "requestKey": "n",
+          "type": "integer",
+          "required": false,
+          "status": "verified-by-success",
+          "note": "The provider or account may impose a lower maximum."
+        },
+        {
+          "name": "Response format",
+          "requestKey": "response_format",
+          "type": "string",
+          "required": false,
+          "status": "verified-by-success",
+          "note": "Choose url or b64_json. Both are preserved in the saved response JSON."
+        }
+      ]
+    }
+  ]
+}

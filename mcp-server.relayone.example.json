@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "relayone-image": {
+      "command": "node",
+      "args": ["D:\\RelayOne-MCP\\relayone-image-mcp\\dist\\index.js"],
+      "env": {
+        "SITE_IMAGE_API_KEY": "REPLACE_WITH_YOUR_RELAYONE_KEY"
+      }
+    }
+  }
+}
