@@ -11,6 +11,26 @@
 
 Banana 还支持 `gemini-3-pro-image`。它的 `imageSize` 是 `512`、`1K`、`2K`、`4K` 清晰度档位，`aspectRatio` 控制比例；它不是 Image2 的固定 `宽x高` 尺寸协议。
 
+## 支持的模型
+
+### Image2
+
+| 模型 | 文生图 | 图生图 | 说明 |
+| --- | --- | --- | --- |
+| `gpt-image-2` | 支持 | 支持 | 基础模型，支持固定像素尺寸 |
+| `gpt-image-2-low` | 支持 | 支持 | low 质量档，需对应分组已启用 |
+| `gpt-image-2-medium` | 支持 | 支持 | medium 质量档，需对应分组已启用 |
+| `gpt-image-2-high` | 支持 | 支持 | high 质量档，需对应分组已启用 |
+
+### Gemini Banana
+
+| 模型 | 文生图 | 图生图/改图 | 说明 |
+| --- | --- | --- | --- |
+| `gemini-3.1-flash-image` | 支持 | 支持 | 默认，速度优先、成本较低，最多 14 张参考图 |
+| `gemini-3-pro-image` | 支持 | 支持 | 质量优先，最多 14 张参考图 |
+
+`gemini-3-pro-image-preview` 会归一化为 `gemini-3-pro-image`，是别名而不是第三个独立模型。Banana 两个模型的文生图和图生图都调用同一个 `generateContent` 接口；是否携带 `reference_images` 决定是文生图还是图生图。
+
 选择 Provider 后，MCP 会自动选择协议：
 
 - `image2` 没有 `reference_images` 时调用 `/v1/images/generations` JSON；有参考图时调用 `/v1/images/edits` multipart，并以 `image[]` 上传参考图。

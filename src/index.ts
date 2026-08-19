@@ -30,6 +30,11 @@ type Provider = {
   imageEditsPath?: string;
   usagePath?: string;
   defaultModel: string;
+  models: Array<{
+    id: string;
+    modes: Array<"text-to-image" | "image-to-image">;
+    note: string;
+  }>;
   evidence: { verified: string[]; notVerified: string[] };
   parameters: Parameter[];
 };
@@ -281,8 +286,8 @@ server.tool("list_remote_image_models", "Read the live model list. This is not a
   catch (error) { return { isError: true, content: [{ type: "text", text: error instanceof Error ? error.message : String(error) }] }; }
 });
 
-server.tool("get_image_capabilities", "Show the provider owner's recorded parameter capabilities.", { provider: providerId }, async ({ provider: id }) => {
-  try { const provider = await selectedProvider(id); return { content: [{ type: "text", text: asText({ provider: provider.id, defaultModel: provider.defaultModel, evidence: provider.evidence, parameters: provider.parameters }) }] }; }
+server.tool("get_image_capabilities", "Show supported models, modes, limits and parameters for the selected provider.", { provider: providerId }, async ({ provider: id }) => {
+  try { const provider = await selectedProvider(id); return { content: [{ type: "text", text: asText({ provider: provider.id, protocol: provider.protocol, defaultModel: provider.defaultModel, models: provider.models, evidence: provider.evidence, parameters: provider.parameters }) }] }; }
   catch (error) { return { isError: true, content: [{ type: "text", text: error instanceof Error ? error.message : String(error) }] }; }
 });
 
@@ -315,9 +320,19 @@ function imageRequestBody(input: Record<string, any>, provider: Provider): Recor
   const reserved = new Set(["provider", "model", "prompt", "custom_parameters", ...Object.keys(standardFields)]);
   const conflicts = Object.keys(custom).filter((key) => reserved.has(key));
   if (conflicts.length) throw new Error(`custom_parameters contains reserved field(s): ${conflicts.join(", ")}`);
-  const selectedModel = model ?? provider.defaultModel;
-  if (!selectedModel) throw new Error("Missing model. Set defaultModel in config/providers.json or pass model for this request.");
+  const selectedModel = normalizedProviderModel(provider, model);
   return { model: selectedModel, ...standardFields, ...custom };
+}
+
+function normalizedProviderModel(provider: Provider, requested: unknown): string {
+  let selected = typeof requested === "string" && requested.trim() ? requested.trim() : provider.defaultModel;
+  if (provider.protocol === "gemini-generate-content" && selected.endsWith("-preview")) {
+    selected = selected.slice(0, -"-preview".length);
+  }
+  if (!provider.models.some((model) => model.id === selected)) {
+    throw new Error(`Unsupported model '${selected}' for provider '${provider.id}'. Supported models: ${provider.models.map((model) => model.id).join(", ")}`);
+  }
+  return selected;
 }
 
 async function providerRequestBody(input: Record<string, any>, provider: Provider): Promise<Record<string, unknown>> {
@@ -347,7 +362,7 @@ function multipartPart(name: string, value: string, boundary: string): string {
 
 async function image2Request(provider: Provider, input: Record<string, any>): Promise<{ path: string; body: string | Buffer; headers?: Record<string, string> }> {
   const references = await readReferenceImages(input.reference_images);
-  const model = input.model ?? provider.defaultModel;
+  const model = normalizedProviderModel(provider, input.model);
   if (!references.length) {
     return {
       path: provider.imageGenerationsPath,
@@ -386,7 +401,7 @@ function providerEndpoint(provider: Provider, model: string): string {
 server.tool("prepare_image_request", "Preview the outgoing JSON without contacting the provider.", imageRequestSchema, async (input) => {
   try {
     const provider = await selectedProvider(input.provider);
-    const model = input.model ?? provider.defaultModel;
+    const model = normalizedProviderModel(provider, input.model);
     const request = provider.protocol === "openai-images"
       ? await image2Request(provider, input)
       : { path: providerEndpoint(provider, model), body: JSON.stringify(await providerRequestBody(input, provider)) };
@@ -403,7 +418,7 @@ const generateImageRequestSchema = {
 server.tool("generate_image", "Generate an image, preserve the original URL or b64_json response, save files to the user-selected directory, and return MCP image content.", generateImageRequestSchema, async (input) => {
   try {
     const provider = await selectedProvider(input.provider);
-    const model = input.model ?? provider.defaultModel;
+    const model = normalizedProviderModel(provider, input.model);
     const request = provider.protocol === "openai-images"
       ? await image2Request(provider, input)
       : { path: providerEndpoint(provider, model), body: JSON.stringify(await providerRequestBody(input, provider)) };
