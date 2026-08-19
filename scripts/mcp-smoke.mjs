@@ -16,7 +16,7 @@ const transport = new StdioClientTransport({
   env: { ...process.env, SITE_IMAGE_API_KEY: "test-key-not-for-production" },
   stderr: "pipe",
 });
-const client = new Client({ name: "relayone-image-mcp-smoke", version: "0.2.0" }, { capabilities: {} });
+const client = new Client({ name: "relayone-image-mcp-smoke", version: "0.3.0" }, { capabilities: {} });
 await client.connect(transport);
 const tools = await client.listTools();
 const names = tools.tools.map((tool) => tool.name).sort();
@@ -33,6 +33,23 @@ if (!previewText.includes("https://aiapi.aiqji.cn/v1/images/generations")) {
   throw new Error("RelayOne endpoint was not prepared");
 }
 
+const bananaPreview = await client.callTool({
+  name: "prepare_image_request",
+  arguments: {
+    provider: "banana",
+    prompt: "banana smoke",
+    aspectRatio: "16:9",
+    imageSize: "2K",
+  },
+});
+const bananaText = JSON.stringify(bananaPreview);
+if (!bananaText.includes("/v1beta/models/gemini-3.1-flash-image:generateContent")) {
+  throw new Error("Banana endpoint was not prepared");
+}
+if (!bananaText.includes("generationConfig") || !bananaText.includes("contents")) {
+  throw new Error("Banana request did not use Gemini generateContent JSON");
+}
+
 const missingDirectory = await client.callTool({
   name: "generate_image",
   arguments: { prompt: "smoke", size: "1024x1024" },
@@ -41,6 +58,6 @@ if (!JSON.stringify(missingDirectory).includes("save_directory")) {
   throw new Error("generate_image did not require save_directory");
 }
 
-console.log(JSON.stringify({ tools: names, previewEndpoint: "https://aiapi.aiqji.cn/v1/images/generations", saveDirectoryRequired: true }));
+console.log(JSON.stringify({ tools: names, image2Endpoint: "https://aiapi.aiqji.cn/v1/images/generations", bananaEndpoint: "https://aiapi.aiqji.cn/v1beta/models/gemini-3.1-flash-image:generateContent", saveDirectoryRequired: true }));
 await transport.close();
 await rm(outputDir, { recursive: true, force: true });

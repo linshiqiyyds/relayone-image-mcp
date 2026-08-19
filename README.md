@@ -1,6 +1,20 @@
 # RelayOne Image MCP
 
-这是 RelayOne Image 的 MCP 接入包，已适配 OpenAI-compatible 生图接口。默认使用 `https://aiapi.aiqji.cn/v1` 和 `gpt-image-2`，每个使用者只需要配置一个 RelayOne API Key。
+这是 RelayOne Image 的 MCP 接入包，同时支持 Image2 和 Gemini Banana 两条生图路线。每个使用者只需要配置一个 RelayOne API Key。
+
+## 两种生图 Provider
+
+| Provider | 协议 | 默认模型 | 适合场景 |
+| --- | --- | --- | --- |
+| `image2` | OpenAI Images `/v1/images/generations` | `gpt-image-2` | 精确像素尺寸、Image2 生图 |
+| `banana` | Gemini `v1beta generateContent` | `gemini-3.1-flash-image` | Banana 文生图、最多 14 张参考图改图 |
+
+Banana 还支持 `gemini-3-pro-image`。它的 `imageSize` 是 `512`、`1K`、`2K`、`4K` 清晰度档位，`aspectRatio` 控制比例；它不是 Image2 的固定 `宽x高` 尺寸协议。
+
+选择 Provider 后，MCP 会自动选择协议：
+
+- `image2` 没有 `reference_images` 时调用 `/v1/images/generations` JSON；有参考图时调用 `/v1/images/edits` multipart，并以 `image[]` 上传参考图。
+- `banana` 始终调用 `/v1beta/models/{model}:generateContent`；参考图会转换成 `contents[].parts[].inlineData`，不是 multipart，也不是 OpenAI Images JSON。
 
 ## 站点需要填写的内容
 
@@ -73,3 +87,47 @@
 ```
 
 如果选择 `response_format: "url"`，MCP 会下载 URL 对应图片；如果选择 `b64_json`，MCP 会解码 Base64。两种原始字段都会原样保存在 `.response.json` 文件中。
+
+## Image2 示例
+
+```json
+{
+  "provider": "image2",
+  "model": "gpt-image-2",
+  "prompt": "一张产品摄影图",
+  "size": "2048x1152",
+  "response_format": "url",
+  "save_directory": "D:\\RelayOne-MCP\\generated"
+}
+```
+
+Image2 图生图只需增加本地参考图路径，MCP 会自动切换到 `/v1/images/edits`：
+
+```json
+{
+  "provider": "image2",
+  "model": "gpt-image-2",
+  "prompt": "保留主体，把背景改成夜晚城市",
+  "reference_images": ["D:\\References\\product.png"],
+  "size": "2048x1152",
+  "save_directory": "D:\\RelayOne-MCP\\generated"
+}
+```
+
+## Banana 示例
+
+```json
+{
+  "provider": "banana",
+  "model": "gemini-3.1-flash-image",
+  "prompt": "把产品放在夜晚城市街道中",
+  "aspectRatio": "16:9",
+  "imageSize": "2K",
+  "reference_images": [
+    "D:\\References\\product.png"
+  ],
+  "save_directory": "D:\\RelayOne-MCP\\generated"
+}
+```
+
+Banana 的参考图会读取为纯 Base64，并按 Gemini 原生协议放入 `contents[].parts[].inlineData`。最多 14 张，每张最大 20 MB，支持 PNG、JPEG、WebP。Banana 的模型不使用 `gpt-image-2`，也不使用 Image2 的固定像素 `size` 字段。
